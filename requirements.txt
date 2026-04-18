@@ -1,0 +1,14 @@
+# Core ML
+scikit-learn==1.6.1
+joblib==1.5.3
+ 
+# Data handling
+pandas==3.0.1
+numpy==2.4.3
+ 
+# Streamlit app
+streamlit==1.56.0
+ 
+# Notebook visualizations
+matplotlib==3.10.8
+seaborn==0.13.2
