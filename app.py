@@ -1,84 +1,96 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
-import joblib
-from sklearn.base import BaseEstimator, TransformerMixin
-from feature_engineer import FeatureEngineer
+import numpy as np
 
-# ===== Load Pipeline =====
-try:
-    pipeline = joblib.load("heart_pipeline.pkl")
-except Exception as e:
-    st.error(f"Error loading pipeline: {e}")
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 
-st.title("🫀 Heart Disease Prediction System")
+# -----------------------------
+# Load Dataset
+# -----------------------------
+df = pd.read_csv("heart.csv")
 
-# ===== Patient Demographics =====
-st.subheader("Patient Demographics")
-age  = st.number_input("Age (years)", 1, 120, 52)
-sex  = st.selectbox("Sex (0 = Female, 1 = Male)", [0, 1])
-fbs  = st.selectbox("Fasting Blood Sugar > 120 mg/dl (0 = No, 1 = Yes)", [0, 1])
-exang = st.selectbox("Exercise-Induced Angina (0 = No, 1 = Yes)", [0, 1])
+# -----------------------------
+# Features & Target
+# -----------------------------
+X = df.drop("target", axis=1)
+y = df["target"]
 
-# ===== Clinical Measurements =====
-st.subheader("Clinical Measurements")
-trestbps = st.number_input("Resting Blood Pressure (mm Hg)", 80, 250, 125)
-chol     = st.number_input("Serum Cholesterol (mg/dl)", 100, 600, 212)
-thalach  = st.number_input("Max Heart Rate Achieved (bpm)", 60, 250, 168)
-oldpeak  = st.number_input("ST Depression (oldpeak)", 0.0, 10.0, 1.0)
+# -----------------------------
+# Train-Test Split
+# -----------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
-# ===== Diagnostic Results =====
-st.subheader("Diagnostic Results")
-cp = st.selectbox("Chest Pain Type",
-                  [0, 1, 2, 3],
-                  format_func=lambda x: {0:"0 – Typical Angina",
-                                         1:"1 – Atypical Angina",
-                                         2:"2 – Non-Anginal Pain",
-                                         3:"3 – Asymptomatic"}[x])
+# -----------------------------
+# Scaling
+# -----------------------------
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-restecg = st.selectbox("Resting ECG Results",
-                       [0, 1, 2],
-                       format_func=lambda x: {0:"0 – Normal",
-                                              1:"1 – ST-T Wave Abnormality",
-                                              2:"2 – Left Ventricular Hypertrophy"}[x])
+# -----------------------------
+# Sidebar - Model Selection
+# -----------------------------
+st.sidebar.title("⚙️ Model Selection")
 
-slope = st.selectbox("Slope of Peak Exercise ST Segment",
-                     [0, 1, 2],
-                     format_func=lambda x: {0:"0 – Upsloping",
-                                            1:"1 – Flat",
-                                            2:"2 – Downsloping"}[x])
+model_option = st.sidebar.selectbox(
+    "Choose Model",
+    ["Logistic Regression", "Random Forest"]
+)
 
-ca   = st.selectbox("Major Vessels Coloured by Fluoroscopy (0–4)", [0, 1, 2, 3, 4])
+# -----------------------------
+# Train Model
+# -----------------------------
+if model_option == "Logistic Regression":
+    model = LogisticRegression()
+else:
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
 
-thal = st.selectbox("Thalassemia",
-                    [0, 1, 2, 3],
-                    format_func=lambda x: {0:"0 – Normal",
-                                           1:"1 – Fixed Defect",
-                                           2:"2 – Reversible Defect",
-                                           3:"3 – Unknown"}[x])
+model.fit(X_train, y_train)
 
-# ===== Prediction =====
-if st.button("Predict Heart Disease"):
-    input_df = pd.DataFrame([{
-        "age":      age,
-        "sex":      sex,
-        "cp":       cp,
-        "trestbps": trestbps,
-        "chol":     chol,
-        "fbs":      fbs,
-        "restecg":  restecg,
-        "thalach":  thalach,
-        "exang":    exang,
-        "oldpeak":  oldpeak,
-        "slope":    slope,
-        "ca":       ca,
-        "thal":     thal,
-    }])
+# -----------------------------
+# UI
+# -----------------------------
+st.title("❤️ Heart Disease Prediction App")
 
-    pred  = pipeline.predict(input_df)[0]
-    proba = pipeline.predict_proba(input_df)[0]
+st.write("### 🔍 Enter Patient Details")
 
-    st.subheader("Prediction Result")
-    st.write("🌲 Random Forest:",
-             "⚠️ Heart Disease Detected" if pred == 1 else "✅ No Heart Disease Detected")
-    st.write(f"Disease Probability: {proba[1]*100:.1f}%  |  No Disease Probability: {proba[0]*100:.1f}%")
+# INPUTS
+age = st.slider("Age", 20, 100, 50)
+sex = st.selectbox("Sex (1=Male, 0=Female)", [1, 0])
+cp = st.slider("Chest Pain Type (0–3)", 0, 3, 1)
+trestbps = st.number_input("Resting Blood Pressure", value=120)
+chol = st.number_input("Cholesterol", value=200)
+fbs = st.selectbox("Fasting Blood Sugar >120 (1=True, 0=False)", [1, 0])
+restecg = st.slider("Rest ECG (0–2)", 0, 2, 1)
+thalach = st.number_input("Max Heart Rate", value=150)
+exang = st.selectbox("Exercise Induced Angina", [1, 0])
+oldpeak = st.number_input("Oldpeak", value=1.0)
+slope = st.slider("Slope (0–2)", 0, 2, 1)
+ca = st.slider("Major Vessels (0–3)", 0, 3, 0)
+thal = st.slider("Thal (0–3)", 0, 3, 1)
+
+# -----------------------------
+# Prediction
+# -----------------------------
+if st.button("Predict"):
+
+    input_data = np.array([[age, sex, cp, trestbps, chol,
+                            fbs, restecg, thalach,
+                            exang, oldpeak, slope, ca, thal]])
+
+    input_data = scaler.transform(input_data)
+
+    prediction = model.predict(input_data)
+    prob = model.predict_proba(input_data)
+
+    st.write(f"💡 Disease Probability: {prob[0][1]:.2f}")
+
+    if prediction[0] == 1:
+        st.error("⚠️ High chance of Heart Disease")
+    else:
+        st.success("✅ Low chance of Heart Disease")
