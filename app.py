@@ -6,7 +6,10 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from feature_engineer import FeatureEngineer
 
 # ===== Load Pipeline =====
-pipeline = joblib.load("heart_pipeline.pkl")
+try:
+    pipeline = joblib.load("heart_pipeline.pkl")
+except Exception as e:
+    st.error(f"Error loading pipeline: {e}")
 
 st.title("🫀 Heart Disease Prediction System")
 
